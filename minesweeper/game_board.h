@@ -72,14 +72,22 @@ namespace minesweeper
         inline bool is_open(std::size_t x, std::size_t y) const;
         // 判断坐标指定的块是否是雷
         inline bool is_mine(std::size_t x, std::size_t y) const;
+        // 判断游戏是否胜利
         inline bool is_won() const noexcept;
+        // 统计坐标指定的块周围雷的数量
         int count_surrounding_mines(std::size_t x, std::size_t y) const noexcept;
+        // 标记坐标指定的块
         inline void mark(std::size_t x, std::size_t y);
+        // 取消标记坐标指定的块
         inline void unmark(std::size_t x, std::size_t y);
+        // 打开坐标指定的块
         void open(std::size_t x, std::size_t y);
     private:
+        // 游戏板
         std::vector<std::vector<Block>> m_board;
+        // 统计周围雷的数量的表
         std::vector<std::vector<int>> m_surrounding_mines_table;
+        // 还需要打开的雷的数量
         int m_blocks_remaining_to_open;
         friend struct std::formatter<GameBoard>;
     };
@@ -87,6 +95,7 @@ namespace minesweeper
 
 namespace std
 {
+    // GameBoard的格式化器
     template <typename CharT>
     struct formatter<minesweeper::GameBoard, CharT> : public formatter<bool, CharT>
     {
@@ -97,7 +106,6 @@ namespace std
 
 namespace minesweeper
 {
-
     inline bool GameBoard::is_valid_pos(std::size_t x, std::size_t y) const noexcept
     {
         return x < m_board.size() && y < m_board[0].size();
