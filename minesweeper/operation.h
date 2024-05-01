@@ -7,6 +7,7 @@
 #  include <functional>
 #  include <ios>
 #  include <limits>
+#  include <string_view>
 #  include <thread>
 #  include <unordered_map>
 
@@ -19,6 +20,21 @@ namespace minesweeper
     extern const std::unordered_map<char, std::function<void(GameBoard*, std::size_t, std::size_t)>>
         operations_table;
 
+    // 清空控制台
+    template <typename CharT>
+    void clear_console(std::basic_ostream<CharT>& out_stream);
+    // 重新打印游戏板
+    template <typename CharT>
+    void refresh_console(const GameBoard& board, std::basic_ostream<CharT>& out_stream);
+    // 重复要求输入，直到输入合法
+    template <typename CharT, typename... Args>
+    void input_safely(
+        const CharT* message,
+        std::basic_istream<CharT>& in_stream,
+        std::basic_ostream<CharT>& out_stream,
+        std::basic_ostream<CharT>& err_stream,
+        Args&... args
+    );
     // 输出欢迎页面，并开始游戏
     template <typename CharT>
     GameBoard welcome(
@@ -29,12 +45,6 @@ namespace minesweeper
     // 庆祝胜利
     template <typename CharT>
     void congratulate(std::basic_istream<CharT>& in_stream, std::basic_ostream<CharT>& out_stream);
-    // 清空控制台
-    template <typename CharT>
-    void clear_console(std::basic_ostream<CharT>& out_stream);
-    // 重新打印游戏板
-    template <typename CharT>
-    void refresh_console(const GameBoard& board, std::basic_ostream<CharT>& out_stream);
     // 接受操作并执行
     template <typename CharT>
     bool receive_and_do_operation(
@@ -44,7 +54,43 @@ namespace minesweeper
         GameBoard& board
     );
 
-    // 输出欢迎页面，并开始游戏
+    template <typename CharT>
+    void clear_console(std::basic_ostream<CharT>& out_stream)
+    {
+        out_stream << "\033c";
+    }
+
+    template <typename CharT>
+    void refresh_console(const GameBoard& board, std::basic_ostream<CharT>& out_stream)
+    {
+        clear_console(out_stream);
+        out_stream << std::format("{}", board);
+    }
+
+    template <typename CharT, typename... Args>
+    void input_safely(
+        const CharT* message,
+        std::basic_istream<CharT>& in_stream,
+        std::basic_ostream<CharT>& out_stream,
+        std::basic_ostream<CharT>& err_stream,
+        Args&... args
+    )
+    {
+        for (;;) {
+            out_stream << message;
+            (in_stream >> ... >> args);
+            if (in_stream.fail()) {
+                in_stream.clear();
+                in_stream.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                err_stream << messages::stream_error;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                clear_console(err_stream);
+            } else {
+                break;
+            }
+        }
+    }
+
     template <typename CharT>
     GameBoard welcome(
         std::basic_istream<CharT>& in_stream,
@@ -54,14 +100,11 @@ namespace minesweeper
     {
         std::size_t height, width, x, y;
         for (;;) {
-            out_stream << messages::welcome;
-            in_stream >> height >> width >> x >> y;
-            if (in_stream.fail() || x < 1 || y < 1 || x > height || y > width) {
-                in_stream.clear();
-                in_stream.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            input_safely(messages::welcome, in_stream, out_stream, err_stream, height, width, x, y);
+            if (x < 1 || y < 1 || x > height || y > width) {
                 err_stream << messages::stream_error;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
-                clear_console(out_stream);
+                clear_console(err_stream);
             } else {
                 break;
             }
@@ -70,7 +113,6 @@ namespace minesweeper
         return { height, width, difficulty, x - 1, y - 1 };
     }
 
-    // 庆祝胜利
     template <typename CharT>
     void congratulate(std::basic_istream<CharT>& in_stream, std::basic_ostream<CharT>& out_stream)
     {
@@ -79,22 +121,6 @@ namespace minesweeper
         in_stream.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 
-    // 清空控制台
-    template <typename CharT>
-    void clear_console(std::basic_ostream<CharT>& out_stream)
-    {
-        out_stream << "\033c";
-    }
-
-    // 重新打印游戏板
-    template <typename CharT>
-    void refresh_console(const GameBoard& board, std::basic_ostream<CharT>& out_stream)
-    {
-        clear_console(out_stream);
-        out_stream << std::format("{}", board);
-    }
-
-    // 接受操作并执行
     template <typename CharT>
     bool receive_and_do_operation(
         std::basic_istream<CharT>& in_stream,
@@ -105,20 +131,15 @@ namespace minesweeper
     {
         char operation_type;
         std::size_t x, y;
-        for (;;) {
-            out_stream << messages::requires_an_action;
-            in_stream >> operation_type >> x >> y;
-            if (in_stream.fail()) {
-                in_stream.clear();
-                in_stream.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                err_stream << messages::stream_error;
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                refresh_console(board, out_stream);
-            } else {
-                break;
-            }
-        }
-
+        input_safely(
+            messages::requires_an_action,
+            in_stream,
+            out_stream,
+            err_stream,
+            operation_type,
+            x,
+            y
+        );
         operation_type = static_cast<char>(std::tolower(operation_type));
         if (operations_table.contains(operation_type)) {
             try {

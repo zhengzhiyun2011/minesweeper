@@ -20,14 +20,13 @@ int main()
     system("chcp 65001");  // 更改字符集，防止乱码
     clear_console(cout);
 #endif  // _WIN32
-
     GameBoard board = welcome(cin, cout, cerr);
-    do {
+    while (!board.is_won()) {
         refresh_console(board, cout);
         if (!receive_and_do_operation(cin, cout, cerr, board)) {
             goto END;
         }
-    } while (!board.is_won());
+    }
 
     refresh_console(board, cout);
     congratulate(cin, cout);
