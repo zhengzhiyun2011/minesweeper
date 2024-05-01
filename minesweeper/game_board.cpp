@@ -20,7 +20,7 @@ namespace minesweeper
     )
         : m_board(height, vector<Block>(width))
         , m_surrounding_mines_table(height, vector<int>(width))
-        , m_blocks_remaining_to_open(static_cast<int>(height * width))
+        , m_blocks_remaining_to_open(0)
     {
         bernoulli_distribution whether_or_not_is_a_mine(probability);
         for (size_t i = 0; i < height; ++i) {
@@ -28,7 +28,8 @@ namespace minesweeper
                 if (!(i == selected_x && j == selected_y) &&
                     whether_or_not_is_a_mine(random_engine)) {
                     m_board[i][j].is_mine = true;
-                    --m_blocks_remaining_to_open;
+                } else {
+                    ++m_blocks_remaining_to_open;
                 }
             }
         }
